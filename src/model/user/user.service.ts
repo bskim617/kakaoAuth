@@ -22,4 +22,13 @@ export class UserService {
   async findByEmail(email: string): Promise<User | null> {
     return await this.userModel.findOne({ email }).exec();
   }
+
+  async saveUserInfo(userData: any): Promise<User> {
+    const user = await this.userModel.findOne({ email: userData.email }).exec();
+    if (!user) {
+      const user = new this.userModel(userData);
+      await user.save();
+    }
+    return user;
+  }
 }

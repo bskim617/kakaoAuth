@@ -10,9 +10,6 @@ export class User extends Document {
   email: string;
 
   @Prop()
-  nickname: string;
-
-  @Prop()
   profileImage: string;
 
   @Prop()

@@ -1,10 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Payload } from './jwt/jwt.payload';
+import { HttpService } from '@nestjs/axios';
+import { lastValueFrom } from 'rxjs';
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly httpService: HttpService,
+  ) {}
 
   // 블랙리스트에 추가된 토큰을 저장하는 배열
   private blacklistedTokens: string[] = [];
@@ -69,8 +74,55 @@ export class AuthService {
     };
   }
 
+  // 로그아웃
+  async logout(token: string): Promise<void> {
+    await this.blacklistedTokens.push(token);
+  }
+
   // 카카오 로그인
   // 인가코드(보통 클라이언트 측에서 해결) -> 토큰 발급 -> 회원 정보 -> 로그인 완료
+  // 카카오 토큰 발급
+  async getToken(code: string) {
+    const params = new URLSearchParams({
+      grant_type: 'authorization_code',
+      client_id: process.env.KAKAO_CLIENT_ID,
+      redirect_uri: process.env.KAKAO_REDIRECT_URI,
+      code: code,
+    });
+
+    try {
+      const res = await lastValueFrom(
+        this.httpService.post(
+          'https://kauth.kakao.com/oauth/token',
+          params.toString(),
+          { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
+        ),
+      );
+      return res.data.access_token;
+    } catch (error) {
+      throw new Error(`토큰을 받아오지 못 했습니다. : ${error}`);
+    }
+  }
+
+  // 카카오 사용자 정보
+  async userInfo(accessToken: string) {
+    try {
+      const res = await lastValueFrom(
+        this.httpService.get('https://kapi.kakao.com/v2/user/me', {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }),
+      );
+      return res.data;
+    } catch (error) {
+      throw new Error(`사용자 정보를 받아오지 못 했습니다. : ${error}`);
+    }
+  }
 
   // 카카오 로그아웃
+  async kakaologout() {
+    const kakaoRestApiKey = process.env.KAKAO_CLIENT_ID;
+    const logoutRedirectUri = process.env.KAKAO_LOGOUT_URI;
+    const logoutUrl = `https://kauth.kakao.com/oauth/logout?client_id=${kakaoRestApiKey}&logout_redirect_uri=${logoutRedirectUri}`;
+    return { url: logoutUrl };
+  }
 }
