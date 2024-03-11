@@ -4,6 +4,7 @@ import {
   Get,
   HttpStatus,
   Post,
+  Req,
   Res,
   UseGuards,
 } from '@nestjs/common';
@@ -60,9 +61,15 @@ export class UserController {
 
   //카카오 로그아웃
   @Get('kakao/logout')
-  async logout() {}
+  async logout() {
+    return this.authService.kakaologout();
+  }
 
   //user정보 가지고 오기
   @Get('userinfo')
-  async userInfo() {}
+  @UseGuards(JwtAuthGuard)
+  async userInfo(@Req() req) {
+    const user = req.user.email;
+    return this.userService.findByEmail(user);
+  }
 }
